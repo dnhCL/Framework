@@ -91,7 +91,7 @@ figure; hold on; axis off; axis equal; colormap(jet(50));
 scale = 'lin'; lw = 1;
 %fvmplotfield(result.T,scale,0);
 % % Uoost = restrictto(U,getzone(casedef.dom,'OOSTRAND'));
-% %fvmplotvectorfield(xi,lw);
+fvmplotvectorfield(xi,lw);
 fvmplotmesh(casedef.dom,lw);
 fvmplotcellnumbers(casedef.dom,8);
 % fvmplotfacenumbers(casedef.dom,8);
