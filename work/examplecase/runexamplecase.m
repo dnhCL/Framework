@@ -33,6 +33,7 @@ mesh  = TwoSeedMesher.genmesh(seedI,seedJ,casedef.boundarynames);
 casedef.dom = newdomain(mesh,'MyDomain');
 
 
+
 % Set up initial fields
 T = Field(casedef.dom.allCells,0);     % Temperature [K] (scalar); empty field
 % reset(T,0);                          % Reset with all zeros
@@ -66,8 +67,8 @@ casedef.BC{jBC}.kind   = 'Dirichlet';
 casedef.BC{jBC}.data.bcval = 0;
 jBC = jBC+1;
 casedef.BC{jBC}.zoneID = 'NOORDRAND';
-casedef.BC{jBC}.kind   = 'Dirichlet';
-casedef.BC{jBC}.data.bcval = 0;
+casedef.BC{jBC}.kind   = 'Neumann';
+casedef.BC{jBC}.data.bcval = -10;
 
 
 % Set up iteration parameters
@@ -89,13 +90,13 @@ result = examplesolver(casedef);
 % Plot result
 figure; hold on; axis off; axis equal; colormap(jet(50));
 scale = 'lin'; lw = 1;
-%fvmplotfield(result.T,scale,0);
+fvmplotfield(result.T,scale,0);
 % % Uoost = restrictto(U,getzone(casedef.dom,'OOSTRAND'));
-fvmplotvectorfield(xi,lw);
+% %fvmplotvectorfield(xi,lw);
 fvmplotmesh(casedef.dom,lw);
 fvmplotcellnumbers(casedef.dom,8);
 % fvmplotfacenumbers(casedef.dom,8);
 % fvmplotvertexnumbers(casedef.dom,8);
 
 
-
+% Visualize the structure of the matrix A from the solver

@@ -16,7 +16,7 @@ function fTangent = calc_fTangent(nF, fNormal)
         fTangent(:, iF) = tangent / norm(tangent);
         
         % Monitorear el vector tangente normalizado
-        fprintf('Vector tangente normalizado de la cara %d: [%f, %f]\n', iF, fTangent(1, iF), fTangent(2, iF));
+        %%fprintf('Vector tangente normalizado de la cara %d: [%f, %f]\n', iF, fTangent(1, iF), fTangent(2, iF));
     end
 end
 

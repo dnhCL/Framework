@@ -177,12 +177,14 @@ methods (Access=public)
       this.maxnoCNbV    = MeshObj.maxNoCNbV;
       
       % Add mirror ghostcells to fNbC:
+      
       this.fNbC = add_mirrgc_to_fNbC(...
          this.fNbCLoc,this.fNbC,this.nIf,this.nBf,this.nPc);
                   
       % Calculate other topological data ==================================      
       [this.vNbFLoc this.vNbF] = calc_vNbF(...
          this.nV,this.nF,this.fNbVLoc,this.fNbV);
+
       
       [this.cNbFLoc this.cNbF] = calc_cNbF(...
          this.nC,this.nPc,this.nF,this.maxnoCNbF,...
