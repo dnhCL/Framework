@@ -1,45 +1,54 @@
 function fArea = calc_fArea(nF, fNbVLoc, fNbV, vCoord)
+    % Function to calculate the areas (or lengths) of faces in a mesh
+    % Inputs:
+    % - nF: Number of faces in the mesh
+    % - fNbVLoc: Number of vertices per face (typically 2 in 2D)
+    % - fNbV: Array containing vertex indices for each face
+    % - vCoord: Array of vertex coordinates
+    %
+    % Output:
+    % - fArea: Array of face areas (1 x nF), where each entry represents the length of a face
 
-    % Verificación del número de caras (nF)
-    fprintf('Número de caras (nF) en calc_fArea: %d\n', nF);
+    % Display the number of faces for debugging
+    %fprintf('Number of faces (nF) in calc_fArea: %d\n', nF);
 
-    % Inicializamos el vector para almacenar las áreas (longitudes) de las caras
+    % Initialize the area (or length) array
     fArea = zeros(1, nF);
-    
-    % Cada cara tiene 2 vértices
-    numVerticesPerFace = fNbVLoc;  % Esto es 2 según la documentación
-    
-    % Verificación del tamaño de fNbV
+
+    % Confirm that the number of vertices per face is set to 2
+    numVerticesPerFace = fNbVLoc;
+
+    % Check the size of fNbV to ensure it has data
     totalVertices = length(fNbV);
-    fprintf('Tamaño de fNbV en calc_fArea: %d\n', totalVertices);
-    
+    %fprintf('Size of fNbV in calc_fArea: %d\n', totalVertices);
+
     if totalVertices == 0
-        error('El vector fNbV está vacío en calc_fArea.');
+        error('fNbV vector is empty in calc_fArea.');
     end
-    
-    % Recorremos cada cara
+
+    % Loop through each face to calculate its length
     for iF = 1:nF
-        
-        % El índice de los vértices para la cara iF está dado por:
-        startIdx = (iF - 1) * numVerticesPerFace + 1;  % Índice inicial en fNbV
-        endIdx = startIdx + numVerticesPerFace - 1;    % Índice final en fNbV
-        
-        % Verificación de que los índices están dentro de los límites
+        % Calculate the indices of the vertices for face iF
+        startIdx = (iF - 1) * numVerticesPerFace + 1;
+        endIdx = startIdx + numVerticesPerFace - 1;
+
+        % Ensure indices are within bounds
         if endIdx > totalVertices
-            error('Índice fuera de los límites en calc_fArea: startIdx = %d, endIdx = %d, totalVertices = %d', startIdx, endIdx, totalVertices);
+            error('Index out of bounds in calc_fArea: startIdx = %d, endIdx = %d, totalVertices = %d', startIdx, endIdx, totalVertices);
         end
-        
-        % Extraemos los índices de los vértices de la cara
+
+        % Retrieve the vertex indices for the current face
         faceVertices = fNbV(startIdx:endIdx);
-        
-        % Extraemos las coordenadas de los dos vértices
+
+        % Get the coordinates of the two vertices
         v1 = vCoord(:, faceVertices(1));
         v2 = vCoord(:, faceVertices(2));
-        
-        % Calculamos la longitud de la cara como la distancia entre los dos vértices
+
+        % Calculate the length of the face as the distance between the two vertices
         fArea(iF) = sqrt((v2(1) - v1(1))^2 + (v2(2) - v1(2))^2);
     end
 end
+
 
 
 

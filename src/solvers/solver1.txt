@@ -1,0 +1,158 @@
+%==========================================================================
+%
+% Example solver using the FVMLab framework for students
+%
+% Purpose: Provides code structure for solving a scalar conservation equation
+%          using data structures provided by the framework.
+%
+% by Frederik Rogiers
+%
+%==========================================================================
+function result = examplesolver(casedef)
+
+    dom = casedef.dom;
+    
+    % Create field objects
+    T = Field(dom.allCells,0);      % Temperature [K] (scalar); empty field
+    reset(T,0);                     % Reset with all zeros
+    
+    % Create an equation object for holding a scalar conservation equation
+    eqn = ScalarFvEqn2(dom);
+    
+    % Initialize coefficients for diagonal, boundary, and internal terms
+    adiag = zeros(dom.nC, 1);                % Diagonal elements
+    anb_boundary = zeros(2 * dom.nBf, 1);    % Off-diagonal for boundary faces
+    anb_internal = zeros(2 * dom.nIf, 1);    % Off-diagonal for internal faces
+    bdata = zeros(dom.nC, 1);                % Right-hand side
+    
+    kappa = casedef.material.k; % Thermal conductivity
+    
+    % Start iteration
+    iterate = true;
+    niter = 0;
+    while iterate   
+       
+       niter = niter + 1;
+       
+       % Reset all terms in eqn object to zero
+       reset(eqn); 
+       
+       % ======================================================
+       % 1. Compute coefficients for internal faces (anb_internal)
+       % ======================================================
+       for iF = 1:dom.nIf
+           cP = dom.fNbC(2*iF - 1); % Cell on one side of the internal face
+           cNB = dom.fNbC(2*iF);    % Cell on the other side of the internal face
+           
+           % Diffusion coefficient for internal faces
+           Af = dom.fArea(iF);               
+           Lf = dom.fXiMag(iF);              
+           aNB = -kappa * Af / Lf;           % Diffusion term
+           
+           % Store in anb_internal array (only once per pair)
+           anb_internal(2*iF - 1) = aNB;  % For cP -> cNB
+           anb_internal(2*iF) = aNB;      % For cNB -> cP
+           
+           % Update adiag for cP and cNB (adding contributions from both)
+           adiag(cP) = adiag(cP) + aNB;
+           adiag(cNB) = adiag(cNB) - aNB;
+       end
+       
+       % ======================================================
+       % 2. Compute coefficients for boundary faces (anb_boundary) and apply BCs
+       % ======================================================
+       for jF = 1:dom.nBf
+           cP = dom.fNbC(2*(jF + dom.nIf) - 1); % Physical cell
+           cG = dom.fNbC(2*(jF + dom.nIf));     % Ghost cell
+           
+           Af = dom.fArea(jF + dom.nIf);
+           Lf = dom.fXiMag(jF + dom.nIf);
+           lambda = dom.fXiLambda(jF + dom.nIf);
+           aNB = -kappa * Af / Lf;              % Diffusion term
+           
+           % Store in anb_boundary array
+           anb_boundary(2*jF - 1) = aNB; % For cP -> cG
+           anb_boundary(2*jF) = aNB;     % For cG -> cP
+           
+           % Apply boundary conditions for this face in bdata
+           for iBC = 1:length(casedef.BC)
+               bc = casedef.BC{iBC};
+               boundaryZone = dom.getzone(bc.zoneID);
+               
+               % Check if this ghost cell belongs to the current boundary condition
+               if (jF + dom.nIf) >= boundaryZone.range(1) && (jF + dom.nIf) <= boundaryZone.range(2)
+                   if strcmp(bc.kind, 'Dirichlet')
+                       % Dirichlet condition: Apply the condition to `bdata` using phi_star
+                       phi_star = bc.data.bcval;
+                       
+                       % Adjust `bdata` for Dirichlet boundary conditions
+                       bdata(cP) = bdata(cP) - aNB * phi_star / (1 - lambda);
+                       
+                       % Diagonal adjustment for the ghost cell in `adiag`
+                       adiag(cG) = adiag(cG) + aNB / (1 - lambda);
+
+                    elseif strcmp(bc.kind, 'Neumann')
+                        % Neumann condition: Set up ghost cell value based on gradient (flux)
+                        grad_phi = bc.data.bcval;  % phi' at the boundary
+                        phi_pc = get(T, cP);       % Value in the physical cell
+                        phi_gc = phi_pc + grad_phi * Lf;  % Neumann condition applied using gradient
+                        
+                        % Adjust bdata and adiag to respect the boundary condition
+                        bdata(cP) = bdata(cP) + D * phi_gc;  % Update RHS to reflect phi_gc contribution
+                    
+                   end
+                   break; % Exit the loop once the correct boundary condition is applied
+               end
+           end
+           
+           % Diagonal adjustment for the physical cell `cP` to account for boundary face
+           adiag(cP) = adiag(cP) - aNB;
+       end
+       
+       % ======================================================
+       % 3. Final Assembly of `adata` and `bdata`
+       % ======================================================
+       % Set `adata` and `bdata` in `eqn` object
+       eqn.adata = [adiag; anb_internal; anb_boundary];
+       eqn.bdata = bdata;   % Right-hand side with boundary contributions
+       
+       % ======================================================
+       % Create a MATLAB sparse linear system from the eqn object
+       % ======================================================
+       [A, b] = to_msparse(eqn);
+       x = get(T);
+       x = x';
+       
+       % Visualize the structure of A and values of b
+       spy(A);
+       title('Structure of the Matrix A with contributions and boundary conditions');
+       
+       % Check tolerance and iteration count
+       TRes = b - A * x;
+       TResnorm = norm(TRes);         
+       if TResnorm < casedef.iteration.TTol
+          Tconverged = true;
+          iterate = false;
+       elseif niter > casedef.iteration.maxniter
+          Tconverged = false;
+          iterate = false;
+       else
+          x = A \ b; % Direct sparse solver.
+          set(T, x'); % Put algebraic solution in the Field
+       end
+       
+    end % end while iterate
+    
+    fprintf('Final Vector b:\n');
+    disp(b); % Display vector b
+    
+    % Save final results
+    result.endtime = now; % call datestr(now) for displaying this time 
+    result.Tconverged = Tconverged;
+    result.niter = niter;
+    result.TResnorm = TResnorm;
+    result.TRes = Field(dom.allCells,0);
+    set(result.TRes, TRes');
+    result.T = T;
+    
+end

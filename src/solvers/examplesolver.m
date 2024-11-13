@@ -1,153 +1,199 @@
 %==========================================================================
 %
-% Solver for Steady-State Diffusion using the FVMLab Framework
+% Example solver using the FVMLab framework 4 students
 %
-% Purpose: Implements the steady-state diffusion equation in a scalar
-%          conservation equation using finite volume discretization.
-%          Computes the coefficients and solves the resulting system.
+% Purpose: Provides code structure for solving a scalar conservation
+%          equation using data structures provided by the framework.
 %
-% by Frederik Rogiers (modified for steady-state diffusion)
+% by Frederik Rogiers
 %
 %==========================================================================
 function result = examplesolver(casedef)
 
     dom = casedef.dom;
- 
+    
     % Create field objects
     T = Field(dom.allCells, 0);      % Temperature [K] (scalar); empty field
-    reset(T, 0);                     % Reset to zeros
- 
-    % Create an equation object to contain the scalar conservation equation
+    reset(T, 0);                     % Reset with all zeros
+    
+    % Create an equation object for holding a scalar conservation equation
     eqn = ScalarFvEqn2(dom);
- 
-    % Define material properties
-    k = casedef.material.k;  % Thermal conductivity [W/(m K)]
- 
-    % Iteration setup
+    
+    % Extraer información del dominio y parámetros
+    fNbC = dom.fNbC;
+    fNbCLoc = dom.fNbCLoc; % Dimensión por cara (ej. 2 en 2D)
+    fArea = dom.fArea;     % Área de cada cara
+    fXiMag = dom.fXiMag;   % Distancia entre centros de celdas vecinas
+    kappa = casedef.material.k; % Coeficiente de difusión
+    fXiLambda = dom.fXiLambda;
+
     iterate = true;
     niter = 0;
-    while iterate
-        niter = niter + 1;
- 
-        % Reset all terms to zero
-        reset(eqn);
+    while iterate   
+       
+       niter = niter + 1;
+       
+       % Reset all terms in the equation object for the new iteration
+       reset(eqn); 
+       
+       % Inicializar vectores para almacenar los coeficientes
+       adiag = zeros(dom.nC, 1);
+       anb_internal = zeros(2 * dom.nIf, 1); % Coeficientes de caras internas
+       anb_boundary = zeros(2 * dom.nBf, 1); % Coeficientes de caras de borde
+       
+       % Ensamblaje de coeficientes en caras internas
+       for i = 1:dom.nIf
+           % Identificar las celdas vecinas para la cara i
+           c1 = fNbC(fNbCLoc * (i - 1) + 1);
+           c2 = fNbC(fNbCLoc * (i - 1) + 2);
+           
+           % Calcular el coeficiente de difusión entre c1 y c2
+           D = -kappa * fArea(i) / fXiMag(i);
+           
+           % Almacenar en anb_internal para ambos lados (simétrico)
+           anb_internal(2 * (i - 1) + 1) = D; % (c1 -> c2)
+           anb_internal(2 * (i - 1) + 2) = D; % (c2 -> c1)
+       end
 
-        % Initialize coefficients
-        adiag = zeros(dom.nC, 1);
-        anb_internal = zeros(2 * dom.nIf, 1);
-        anb_boundary = zeros(2 * dom.nBf, 1);
-        bdata = zeros(eqn.n, 1);
-
-        % Compute coefficients for physical cell equations and add them to the eqn object
-        internal_idx = 1;
-        boundary_idx = 1;
-        for jF = 1:dom.nF
-            % Obtain neighboring cells of the face
-            c1 = dom.fNbC((jF - 1) * dom.fNbCLoc + 1);
-            c2 = dom.fNbC((jF - 1) * dom.fNbCLoc + 2);
- 
-            % Obtain face area and distance between centroids
-            Af = dom.fArea(jF);
-            Lf = dom.fXiMag(jF);
- 
-            % Diffusion coefficient
-            D = k * Af / Lf;
- 
-            % If c2 is a ghost cell, then we are at a boundary
-            if c2 > dom.nPc
-                % Determine boundary condition value using casedef.BC
-                bcval = 0; % Default value
-                bcType = 'Dirichlet'; % Default type
- 
-                % Search for applicable boundary condition for the current face
-                for jBC = 1:length(casedef.BC)
-                    % Obtain the boundary zone identifier
-                    boundaryZone = getzone(dom, casedef.BC{jBC}.zoneID);
-                    % Check if face belongs to the boundary zone using the zone range
-                    if jF >= boundaryZone.range(1) && jF <= boundaryZone.range(2)
-                        bcval = casedef.BC{jBC}.data.bcval;
-                        if isfield(casedef.BC{jBC}.data, 'bcType')
-                            bcType = casedef.BC{jBC}.data.bcType;
-                        end
-                        break;
-                    end
+       % Ensamblaje de coeficientes en caras de borde
+       for j = 1:dom.nBf
+           % Identificar la celda física y la celda fantasma para la cara de borde
+           cP = fNbC(fNbCLoc * (dom.nIf + j - 1) + 1); % Celda física
+           cGC = fNbC(fNbCLoc * (dom.nIf + j - 1) + 2); % Celda fantasma
+           
+           % Calcular el coeficiente entre la celda física y la celda fantasma
+           D = -kappa * fArea(dom.nIf + j) / fXiMag(dom.nIf + j);
+           
+           
+           % Determinar la condición de borde para cGC
+           kind = '';
+           bcval = 0;
+            % Buscar la condición de borde aplicable a la cara actual
+            for jBC = 1:length(casedef.BC)
+                % Obtenemos el identificador de la zona de frontera
+                boundaryZone = getzone(dom, casedef.BC{jBC}.zoneID);
+                % Verificar si la cara pertenece a la zona de frontera usando el rango de la zona
+                if j + dom.nIf >= boundaryZone.range(1) && j + dom.nIf  <= boundaryZone.range(2)
+                    bcval = casedef.BC{jBC}.data.bcval;
+                    kind = casedef.BC{jBC}.kind;  % 'Dirichlet' o 'Neumann'
+                    break;
                 end
-
-                if strcmp(bcType, 'Dirichlet')
-                    % Apply Dirichlet boundary condition to physical cell (c1)
-                    adiag(c1) = adiag(c1) + D;
-                    bdata(c1) = bdata(c1) + D * bcval;
-                elseif strcmp(bcType, 'Neumann')
-                    % Apply Neumann boundary condition (specified flux)
-                    bdata(c1) = bdata(c1) + bcval * Af;
-                end
+            end
+           
+           % Aplicar la condición de borde según el tipo
+            if strcmp(kind, 'Dirichlet')
+                % Condición de Dirichlet: interpolar entre φ_PC y φ_GC para que cumpla φ_f = φ*
+                % Ajustar el término de fuente y el valor de φ_GC según la interpolación
                 
-                anb_boundary(boundary_idx) = -D;
-                anb_boundary(boundary_idx + 1) = -D;
-                boundary_idx = boundary_idx + 2;
-            else
-                % Internal face case: add coefficients of the two neighboring cells
-                adiag(c1) = adiag(c1) + D;
-                adiag(c2) = adiag(c2) + D;
-                anb_internal(internal_idx) = -D;
-                anb_internal(internal_idx + 1) = -D;
-                internal_idx = internal_idx + 2;
-            end
-        end
+                % Expresar φ_GC en términos de φ_PC y φ*
+                anb_boundary(fNbCLoc * (j - 1) + 1) = D  ; % (cP -> cGC, PDE en celda física)
+                anb_boundary(fNbCLoc * (j - 1) + 2) = D ; % (cGC -> cP, ajuste por Dirichlet)
+                adiag(cP) = adiag(cP) - anb_boundary(fNbCLoc * (j - 1) + 1) ; % Diagonal de la celda física
+                adiag(cGC) = adiag(cGC) - anb_boundary(fNbCLoc * (j - 1) + 2) / (1 - fXiLambda(dom.nIf + j)) ;
+                % Ajustar bdata en función de φ* según la interpolación de Dirichlet
+                eqn.bdata(cP) = eqn.bdata(cP) - D *bcval * (1.05 - fXiLambda(dom.nIf + j)) ; 
 
-        % Ensure symmetry and complete matrix diagonal
-        for i = 1:dom.nC
-            if adiag(i) == 0
-                adiag(i) = -sum(anb_internal(internal_idx - 2:internal_idx - 1)) - sum(anb_boundary(boundary_idx - 2:boundary_idx - 1));
+            elseif strcmp(kind, 'Neumann')
+                % Condición de Neumann: imponer un gradiente en la frontera
+                anb_boundary(fNbCLoc * (j - 1) + 1) = D; % (cP -> cGC, PDE en celda física)
+                anb_boundary(fNbCLoc * (j - 1) + 2) = D; % (cGC -> cP, Condición Neumann)
+                adiag(cP) = adiag(cP) - anb_boundary(fNbCLoc * (j - 1) + 1) ; % Diagonal de la celda física
+                adiag(cGC) = adiag(cGC) - anb_boundary(fNbCLoc * (j - 1) + 2) ; % Diagonal de la celda fantasma
+                % Ajustar bdata en función del gradiente φ'
+                eqn.bdata(cP) = eqn.bdata(cP) + bcval * fArea(dom.nIf + j);
             end
-        end
+       end
 
-        % Assign coefficients to the equation
-        eqn.adata = [adiag; anb_internal; anb_boundary];
-        eqn.bdata = bdata;
- 
-        % Create a sparse linear system in MATLAB from the eqn object
-        [A, b] = to_msparse(eqn);
-        x = get(T);
-        x = x';
-        spy(A);
-        title('Coefficient Matrix Structure A');
+       % Calcular adiag después de ensamblar anb_internal y anb_boundary
         
-        % Check tolerance and iteration count
-        TRes = b - A * x;
-        TResnorm = norm(TRes);
-        if TResnorm < casedef.iteration.TTol
-            Tconverged = true;
-            iterate = false;
-        elseif niter > casedef.iteration.maxniter
-            Tconverged = false;
-            iterate = false;
-        else
-            % Solve the linear system
-            x = A \ b;
-            set(T, x'); 
+
+        % Recorrer las caras internas y añadir contribuciones a la diagonal
+        for i = 1:dom.nIf
+            % Identificar las celdas vecinas para la cara i
+            c1 = fNbC(fNbCLoc * (i - 1) + 1);
+            c2 = fNbC(fNbCLoc * (i - 1) + 2);
+            
+            % Añadir contribuciones de anb_internal a la diagonal de c1 y c2
+            adiag(c1) = adiag(c1) - anb_internal(2 * (i - 1) + 1) ;
+            adiag(c2) = adiag(c2) - anb_internal(2 * (i - 1) + 2) ;
         end
-    end
- 
-    % Prepare result structure
-    result.endtime = now; % Call datestr(now) to display this time
+
+
+
+
+       % Asignar los datos calculados a eqn
+       
+       eqn.adata = [adiag; anb_internal; anb_boundary];
+       
+       % Crear sistema disperso en MATLAB desde el objeto eqn
+       [A, b] = to_msparse(eqn);
+       x = get(T);
+       x = x';
+       spy(A);
+       
+       % Check tolerance and iteration count
+       TRes = b - A * x;
+       TResnorm = norm(TRes);         
+       if TResnorm < casedef.iteration.TTol
+          Tconverged = true;
+          iterate = false;
+       elseif niter > casedef.iteration.maxniter
+          Tconverged = false;
+          iterate = false;
+       else
+          x = A \ b; % Solución directa
+          set(T, x'); % Guardar la solución en el campo
+       end
+         
+    end % iteración
+
+    % Resultados finales
+    result.endtime = now; % Tiempo final
     result.Tconverged = Tconverged;
     result.niter = niter;
     result.TResnorm = TResnorm;
     result.TRes = Field(dom.allCells, 0);
     set(result.TRes, TRes');
     result.T = T;
- 
-    % Plot the resulting temperature field (this is not important)
-    figure;
-    hold on;
-    axis off;
-    axis equal;
-    colormap(jet(50));
-    fvmplotfield(result.T, 'lin', 0);
-    title('Temperature Distribution in the Domain');
+
+
+    % Modificación para imprimir temperatura en celdas de borde y fantasma
+    fprintf('Temperaturas en las celdas de borde y fantasma:\n');
+    for j = 1:dom.nBf
+        % Identificar las celdas física y fantasma para la cara de borde j
+        cP = fNbC(fNbCLoc * (dom.nIf + j - 1) + 1); % Celda física
+        cGC = fNbC(fNbCLoc * (dom.nIf + j - 1) + 2); % Celda fantasma
+        
+        % Imprimir la temperatura en la celda física y en la celda fantasma
+        fprintf('Cara %d - Celda física %d: T = %.4f, Celda fantasma %d: T = %.4f\n', ...
+                dom.nIf + j, cP, result.T.data(cP), cGC, result.T.data(cGC));
+        fprintf('Celda física %d (Cara %d): bdata = %.4f\n', cP, dom.nIf + j, eqn.bdata(cP));
+    end
 
 end
+
+
+
+    
+    
+
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
 
 
 
