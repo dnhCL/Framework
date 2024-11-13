@@ -53,6 +53,10 @@ function result = examplesolver(casedef)
            % Almacenar en anb_internal para ambos lados (simétrico)
            anb_internal(2 * (i - 1) + 1) = D; % (c1 -> c2)
            anb_internal(2 * (i - 1) + 2) = D; % (c2 -> c1)
+
+            % Añadir contribuciones de anb_internal a la diagonal de c1 y c2
+            adiag(c1) = adiag(c1) - anb_internal(2 * (i - 1) + 1) ;
+            adiag(c2) = adiag(c2) - anb_internal(2 * (i - 1) + 2) ;
        end
 
        % Ensamblaje de coeficientes en caras de borde
@@ -83,7 +87,7 @@ function result = examplesolver(casedef)
            % Aplicar la condición de borde según el tipo
             if strcmp(kind, 'Dirichlet')
                 % Condición de Dirichlet: interpolar entre φ_PC y φ_GC para que cumpla φ_f = φ*
-                % Ajustar el término de fuente y el valor de φ_GC según la interpolación
+
                 
                 % Expresar φ_GC en términos de φ_PC y φ*
                 anb_boundary(fNbCLoc * (j - 1) + 1) = D  ; % (cP -> cGC, PDE en celda física)
@@ -103,23 +107,6 @@ function result = examplesolver(casedef)
                 eqn.bdata(cP) = eqn.bdata(cP) + bcval * fArea(dom.nIf + j);
             end
        end
-
-       % Calcular adiag después de ensamblar anb_internal y anb_boundary
-        
-
-        % Recorrer las caras internas y añadir contribuciones a la diagonal
-        for i = 1:dom.nIf
-            % Identificar las celdas vecinas para la cara i
-            c1 = fNbC(fNbCLoc * (i - 1) + 1);
-            c2 = fNbC(fNbCLoc * (i - 1) + 2);
-            
-            % Añadir contribuciones de anb_internal a la diagonal de c1 y c2
-            adiag(c1) = adiag(c1) - anb_internal(2 * (i - 1) + 1) ;
-            adiag(c2) = adiag(c2) - anb_internal(2 * (i - 1) + 2) ;
-        end
-
-
-
 
        % Asignar los datos calculados a eqn
        
