@@ -40,10 +40,10 @@ T = Field(casedef.dom.allCells,0);     % Temperature [K] (scalar); empty field
 randomdata = rand(T.elsize,T.elcountzone)-0.5;
 set(T,randomdata);                     % Set with random numbers
 
-U = Field(casedef.dom.allCells,1);     % Velocity [m/s] (vector);
-set(U,[rand(1,U.elcountzone);rand(1,U.elcountzone)]);
+U = Field(casedef.dom.allCells,1);
+set(U,[ones(1,U.elcountzone); zeros(1,U.elcountzone)]); % Velocidad constante en x
 
-casedof.U = U;
+casedef.U = U;
 %reset(U,[1;0.2]);
 
 
@@ -51,6 +51,7 @@ casedof.U = U;
 
 % Define material properties
 casedef.material.k = 1;  % Thermal conductivity [W/(m K)]
+%casedef.material.rho = 1;
 
 
 % Define boundary conditions
@@ -59,20 +60,20 @@ casedef.material.k = 1;  % Thermal conductivity [W/(m K)]
 jBC = 0;
 jBC = jBC+1;
 casedef.BC{jBC}.zoneID = 'WESTRAND';
-casedef.BC{jBC}.kind   = 'Neumann';
+casedef.BC{jBC}.kind   = 'Dirichlet';
 casedef.BC{jBC}.data.bcval = 0;
 jBC = jBC+1;
 casedef.BC{jBC}.zoneID = 'OOSTRAND';
+casedef.BC{jBC}.kind   = 'Dirichlet';
+casedef.BC{jBC}.data.bcval = 10;
+jBC = jBC+1;
+casedef.BC{jBC}.zoneID = 'ZUIDRAND';
 casedef.BC{jBC}.kind   = 'Neumann';
 casedef.BC{jBC}.data.bcval = 0;
 jBC = jBC+1;
-casedef.BC{jBC}.zoneID = 'ZUIDRAND';
-casedef.BC{jBC}.kind   = 'Dirichlet';
-casedef.BC{jBC}.data.bcval = 0;
-jBC = jBC+1;
 casedef.BC{jBC}.zoneID = 'NOORDRAND';
-casedef.BC{jBC}.kind   = 'Dirichlet';
-casedef.BC{jBC}.data.bcval = 1; 
+casedef.BC{jBC}.kind   = 'Neumann';
+casedef.BC{jBC}.data.bcval = 0; 
 
 
 
@@ -125,7 +126,7 @@ fvmplotfield(result.T,scale,0);
 % % Uoost = restrictto(U,getzone(casedef.dom,'OOSTRAND'));
 % %fvmplotvectorfield(xi,lw);
 fvmplotmesh(casedef.dom,lw);
-fvmplotcellnumbers(casedef.dom,8);
+%fvmplotcellnumbers(casedef.dom,8);
 % fvmplotfacenumbers(casedef.dom,8);
 % fvmplotvertexnumbers(casedef.dom,8);
 
