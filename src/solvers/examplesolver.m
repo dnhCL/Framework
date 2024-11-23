@@ -31,13 +31,20 @@ function result = examplesolver(casedef)
     kappa = casedef.material.k; % Coeficiente de difusión
     fXiLambda = dom.fXiLambda;
     U = casedef.U;
-    %rho = casedef.material.rho;
+    rho = casedef.material.rho;
+
+    % Inicializar listas para almacenar valores de U_face
+    U_face_internal = []; % Para caras internas
+    U_face_boundary = []; % Para caras de frontera
+
+     
 
     iterate = true;
     niter = 0;
     while iterate   
        
        niter = niter + 1;
+       
        
        % Reset all terms in the equation object for the new iteration
        reset(eqn); 
@@ -46,6 +53,9 @@ function result = examplesolver(casedef)
        adiag = zeros(dom.nC, 1);
        anb_internal = zeros(2 * dom.nIf, 1); % Coeficientes de caras internas
        anb_boundary = zeros(2 * dom.nBf, 1); % Coeficientes de caras de borde
+
+       U_face_internal = zeros(1, dom.nIf); % Reiniciar para cada iteración
+       U_face_boundary = zeros(1, dom.nBf); % Reiniciar para cada iteración
        
        % Ensamblaje de coeficientes en caras internas
        for i = 1:dom.nIf
@@ -58,28 +68,44 @@ function result = examplesolver(casedef)
 
             % Velocidad en la cara (promedio de las celdas adyacentes)
             U_face = 0.5 * (U.data(:, c1) + U.data(:, c2));
+            
+            % Calcular componente normal de U_face
+            U_normal_face = dot(U_face, normal); % Producto punto
+            U_face_internal(i) = U_normal_face; % Almacenar valor para la cara actual
 
             % Flujo convectivo
-            F_conv = (U_face' * normal) * area *0 ;
+            F_conv = U_normal_face * area; % Usar solo la componente normal
 
-            % Gradiente de presión
-            pressure_grad = (P.data(c2) - P.data(c1)) / fXiMag(i);
-            pressure_term = pressure_grad * normal * area; % Contribución del gradiente de presión
            
             % Calcular el coeficiente de difusión entre c1 y c2
             D = -kappa * fArea(i) / fXiMag(i);
 
-            % Coeficientes para flujo convectivo y difusión
-            a_c1_c2 = D + max(0, F_conv) ; % Upwind para convección
-            a_c2_c1 = D - min(0, F_conv) ; % Upwind para convección
-           
+            % Número de Peclet
+            Pe = abs(F_conv) / D;
+
+            % Esquema híbrido
+            if Pe <= 2
+                % Central Differencing Scheme (CDS)
+                a_c1_c2 = D + 0.5 * F_conv;
+                a_c2_c1 = D - 0.5 * F_conv;
+            else
+                % Upwind Scheme
+                if F_conv > 0
+                    a_c1_c2 = D + F_conv;
+                    a_c2_c1 = D;
+                else
+                    a_c1_c2 = D;
+                    a_c2_c1 = D - F_conv;
+                end
+            end
+                     
             % Almacenar en anb_internal para ambos lados (simétrico)
-            anb_internal(2 * (i - 1) + 1) = a_c1_c2; % (c1 -> c2)
-            anb_internal(2 * (i - 1) + 2) = a_c2_c1; % (c2 -> c1)
+            anb_internal(fNbCLoc * (i - 1) + 1) = a_c1_c2; % (c1 -> c2)
+            anb_internal(fNbCLoc * (i - 1) + 2) = a_c2_c1; % (c2 -> c1)
 
             % Añadir contribuciones de anb_internal a la diagonal de c1 y c2
-            adiag(c1) = adiag(c1) - anb_internal(2 * (i - 1) + 1) ;
-            adiag(c2) = adiag(c2) - anb_internal(2 * (i - 1) + 2) ;
+            adiag(c1) = adiag(c1) - anb_internal(fNbCLoc * (i - 1) + 1) ;
+            adiag(c2) = adiag(c2) - anb_internal(fNbCLoc * (i - 1) + 2) ;
 
            
        end
@@ -90,18 +116,12 @@ function result = examplesolver(casedef)
            cP = fNbC(fNbCLoc * (dom.nIf + j - 1) + 1); % Celda física
            cGC = fNbC(fNbCLoc * (dom.nIf + j - 1) + 2); % Celda fantasma
 
-           normal = dom.fNormal(:, dom.nIf + j); % Vector normal a la cara
-           area = fArea(dom.nIf + j); % Área de la cara
 
-           % Velocidad en la cara (promedio de las celdas adyacentes)
-           U_face = U.data(:, cP);
-
-           % Flujo convectivo
-           F_conv = (U_face' * normal) * area *0 ;
+           normal = - dom.fNormal(:, dom.nIf + j); % Vector normal a la cara
+           area = fArea(dom.nIf + j); % Área de la cara         
            
            % Calcular el coeficiente entre la celda física y la celda fantasma
            D = -kappa * fArea(dom.nIf + j) / fXiMag(dom.nIf + j);
-           
            
            % Determinar la condición de borde para cGC
            kind = '';
@@ -123,10 +143,10 @@ function result = examplesolver(casedef)
                 % Condición de Dirichlet: interpolar entre φ_PC y φ_GC para que cumpla φ_f = φ*
                 
                     % Flujo entrante
-                    anb_boundary(fNbCLoc * (j - 1) + 1) =  (D + F_conv)  ; % (cP -> cGC, PDE en celda física)
-                    anb_boundary(fNbCLoc * (j - 1) + 2) =  fXiLambda(dom.nIf + j); % (cGC -> cP, Dirichlet)
+                    anb_boundary(fNbCLoc * (j - 1) + 1) =  D  ; % (cP -> cGC, PDE en celda física)
+                    anb_boundary(fNbCLoc * (j - 1) + 2) =  fXiLambda(dom.nIf + j) ; % (cGC -> cP, Dirichlet)
                     adiag(cP) = adiag(cP) - anb_boundary(fNbCLoc * (j - 1) + 1);
-                    adiag(cGC) = (1 - fXiLambda(dom.nIf + j)) ;
+                    adiag(cGC) = (1 - fXiLambda(dom.nIf + j))  ;
                 
                 eqn.bdata(cGC) = eqn.bdata(cGC) + bcval; 
 
@@ -134,21 +154,18 @@ function result = examplesolver(casedef)
                 % Ajustar los coeficientes dependiendo del flujo
 
                     % Flujo entrante
-                    anb_boundary(fNbCLoc * (j - 1) + 1) = D + F_conv ; % (cP -> cGC, PDE en celda física)
-                    anb_boundary(fNbCLoc * (j - 1) + 2) = D - F_conv ; % (cGC -> cP, Neumann)
+                    anb_boundary(fNbCLoc * (j - 1) + 1) = D ; % (cP -> cGC, PDE en celda física)
+                    
+                    anb_boundary(fNbCLoc * (j - 1) + 2) = D; % (cGC -> cP, Neumann)
                     adiag(cP) = adiag(cP) - anb_boundary(fNbCLoc * (j - 1) + 1);
                     adiag(cGC) = adiag(cGC) - anb_boundary(fNbCLoc * (j - 1) + 2)  ;
 
                 % Ajustar bdata en función del gradiente φ'
                 eqn.bdata(cP) = eqn.bdata(cP) + bcval * fArea(dom.nIf + j);
             end
-       end
-
-                  
-        
+       end        
                  
         
-
 
        % Asignar los datos calculados a eqn
        
@@ -175,6 +192,31 @@ function result = examplesolver(casedef)
        end
          
     end % iteración
+
+    % Visualización de U_face
+    figure;
+    subplot(2, 1, 1);
+    plot(U_face_internal, '-o');
+    title('U_{face} en caras internas');
+    xlabel('Índice de cara interna');
+    ylabel('|U_{face}| [m/s]');
+    grid on;
+
+    subplot(2, 1, 2);
+    plot(U_face_boundary, '-o');
+    title('U_{face} en caras de frontera');
+    xlabel('Índice de cara de frontera');
+    ylabel('|U_{face}| [m/s]');
+    grid on;
+
+    % Visualización del campo de velocidades en las celdas del dominio
+    figure;
+    quiver(dom.cCoord(1, :), dom.cCoord(2, :), U.data(1, :), U.data(2, :), 'AutoScale', 'on');
+    title('Campo de Velocidades (U)');
+    xlabel('x [m]');
+    ylabel('y [m]');
+    axis equal;
+    grid on;
 
     % Resultados finales
     result.endtime = now; % Tiempo final

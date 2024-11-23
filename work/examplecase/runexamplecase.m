@@ -62,7 +62,7 @@ casedef.U = U;
 U = Field(casedef.dom.allCells, 1); % Velocidad [m/s] (vector)
 
 % Configurar un campo de velocidades horizontal con magnitud 10
-vel_magnitud = 0; % Magnitud constante
+vel_magnitud = 10; % Magnitud constante
 x_component = vel_magnitud; % Toda la magnitud en la dirección x
 y_component = 0; % Ninguna componente en la dirección y
 
@@ -72,6 +72,8 @@ set(U, [x_component * ones(1, U.elcountzone); y_component * ones(1, U.elcountzon
 % Asignar el campo U a la definición del caso
 casedef.U = U;  
 
+%disp(U.data);
+
 
 
 
@@ -80,7 +82,7 @@ casedef.U = U;
 
 
 % Define material properties
-casedef.material.k = 238;  % Thermal conductivity [W/(m K)]
+casedef.material.k = 0.58;  % Thermal conductivity [W/(m K)]
 casedef.material.rho = 1;
 
 % Define boundary conditions
@@ -91,7 +93,7 @@ casedef.material.rho = 1;
 jBC = 0;
 jBC = jBC+1;
 casedef.BC{jBC}.zoneID = 'WESTRAND';
-casedef.BC{jBC}.kind   = 'Neumann';
+casedef.BC{jBC}.kind   = 'Dirichlet';
 casedef.BC{jBC}.data.bcval = 10;
 jBC = jBC+1;
 casedef.BC{jBC}.zoneID = 'OOSTRAND';
@@ -157,7 +159,7 @@ scale = 'lin'; lw = 1;
 fvmplotfield(result.T,scale,0);
 %fvmplotfield(result2.T,scale,0);
 %Uoost = restrictto(U,getzone(casedef.dom,'OOSTRAND'));
-% %fvmplotvectorfield(xi,lw);
+%fvmplotvectorfield(xi,lw);
 %fvmplotmesh(casedef.dom,lw);
 %fvmplotcellnumbers(casedef.dom,8);
 % fvmplotfacenumbers(casedef.dom,8);
