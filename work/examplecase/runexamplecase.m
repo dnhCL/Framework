@@ -25,8 +25,8 @@ clc
 
 
 % Create a mesh
-seedI = LineSeed.lineSeedOneWayBias([0 0],[1 0],10,1.00,'o');
-seedJ = LineSeed.lineSeedOneWayBias([0 0],[0 1],10,1.00,'o');
+seedI = LineSeed.lineSeedOneWayBias([0 0],[1 0],30,1.00,'o');
+seedJ = LineSeed.lineSeedOneWayBias([0 0],[0 1],30,1.00,'o');
 casedef.boundarynames = {'WESTRAND','OOSTRAND','ZUIDRAND','NOORDRAND'};
 mesh  = TwoSeedMesher.genmesh(seedI,seedJ,casedef.boundarynames);
 % Create domain from mesh
@@ -36,19 +36,21 @@ casedef.dom = newdomain(mesh,'MyDomain');
 
 % Set up initial fields
 T = Field(casedef.dom.allCells,0);     % Temperature [K] (scalar); empty field
-% reset(T,0);                          % Reset with all zeros
+% reset(T,0);
+
+
 randomdata = rand(T.elsize,T.elcountzone)-0.5;
 set(T,randomdata);                     % Set with random numbers
 
 
- 
+
 
 %{
  U = Field(casedef.dom.allCells,1);     % Velocity [m/s] (vector);
 set(U,[rand(1,U.elcountzone);rand(1,U.elcountzone)]);
 
 casedef.U = U; 
- %}
+%}
 
 
 
@@ -62,9 +64,9 @@ casedef.U = U;
 U = Field(casedef.dom.allCells, 1); % Velocidad [m/s] (vector)
 
 % Configurar un campo de velocidades horizontal con magnitud 10
-vel_magnitud = 10; % Magnitud constante
+vel_magnitud =5; % Magnitud constante
 x_component = vel_magnitud; % Toda la magnitud en la dirección x
-y_component = 0; % Ninguna componente en la dirección y
+y_component = 2; % Ninguna componente en la dirección y
 
 % Asignar el mismo vector de velocidad a todas las celdas
 set(U, [x_component * ones(1, U.elcountzone); y_component * ones(1, U.elcountzone)]);
@@ -73,7 +75,7 @@ set(U, [x_component * ones(1, U.elcountzone); y_component * ones(1, U.elcountzon
 casedef.U = U;  
 
 %disp(U.data);
-
+ 
 
 
 
@@ -82,7 +84,7 @@ casedef.U = U;
 
 
 % Define material properties
-casedef.material.k = 0.58;  % Thermal conductivity [W/(m K)]
+casedef.material.k = 1;  % Thermal conductivity [W/(m K)]
 casedef.material.rho = 1;
 
 % Define boundary conditions
@@ -101,11 +103,11 @@ casedef.BC{jBC}.kind   = 'Dirichlet';
 casedef.BC{jBC}.data.bcval = 0;
 jBC = jBC+1;
 casedef.BC{jBC}.zoneID = 'ZUIDRAND';
-casedef.BC{jBC}.kind   = 'Neumann';
+casedef.BC{jBC}.kind   = 'Dirichlet';
 casedef.BC{jBC}.data.bcval = 0;
 jBC = jBC+1;
 casedef.BC{jBC}.zoneID = 'NOORDRAND';
-casedef.BC{jBC}.kind   = 'Neumann';
+casedef.BC{jBC}.kind   = 'Dirichlet';
 casedef.BC{jBC}.data.bcval = 0; 
 
 
@@ -146,18 +148,28 @@ set(normal, (casedef.dom.fNormal));
 set(tangent,(casedef.dom.fTangent));
 set(xi,(casedef.dom.fXi));
 
-
+% Call solver for velocity and pressure
+%result_pressure = examplesolver_P(casedef);
+% Update velocity in the case definition
+%casedef.U = result_pressure.U;
 % Call solver
 result = examplesolver(casedef);
-% Call solver
-%result2 = examplesolver2(casedef);
+
+% Combine results
+
+
+%result.U = result_pressure.U;
+%result.P = result_pressure.P; 
+
+
+
 
 
 % Plot result
 figure; hold on; axis off; axis equal; colormap(jet(50));
 scale = 'lin'; lw = 1;
 fvmplotfield(result.T,scale,0);
-%fvmplotfield(result2.T,scale,0);
+%fvmplotfield(result.P,scale,0);
 %Uoost = restrictto(U,getzone(casedef.dom,'OOSTRAND'));
 %fvmplotvectorfield(xi,lw);
 %fvmplotmesh(casedef.dom,lw);

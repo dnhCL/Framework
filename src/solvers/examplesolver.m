@@ -19,7 +19,6 @@ function result = examplesolver(casedef)
     P = Field(dom.allCells, 0);      % Presión [Pa] (scalar); empty field
     reset(P, 0);                     % Reset with all zeros
 
-    
     % Create an equation object for holding a scalar conservation equation
     eqn = ScalarFvEqn2(dom);
     
@@ -37,15 +36,12 @@ function result = examplesolver(casedef)
     U_face_internal = []; % Para caras internas
     U_face_boundary = []; % Para caras de frontera
 
-     
-
     iterate = true;
     niter = 0;
     while iterate   
        
        niter = niter + 1;
-       
-       
+ 
        % Reset all terms in the equation object for the new iteration
        reset(eqn); 
        
@@ -107,18 +103,13 @@ function result = examplesolver(casedef)
             adiag(c1) = adiag(c1) - anb_internal(fNbCLoc * (i - 1) + 1) ;
             adiag(c2) = adiag(c2) - anb_internal(fNbCLoc * (i - 1) + 2) ;
 
-           
        end
 
        % Ensamblaje de coeficientes en caras de borde
        for j = 1:dom.nBf
            % Identificar la celda física y la celda fantasma para la cara de borde
            cP = fNbC(fNbCLoc * (dom.nIf + j - 1) + 1); % Celda física
-           cGC = fNbC(fNbCLoc * (dom.nIf + j - 1) + 2); % Celda fantasma
-
-
-           normal = - dom.fNormal(:, dom.nIf + j); % Vector normal a la cara
-           area = fArea(dom.nIf + j); % Área de la cara         
+           cGC = fNbC(fNbCLoc * (dom.nIf + j - 1) + 2); % Celda fantasma    
            
            % Calcular el coeficiente entre la celda física y la celda fantasma
            D = -kappa * fArea(dom.nIf + j) / fXiMag(dom.nIf + j);
@@ -164,9 +155,6 @@ function result = examplesolver(casedef)
                 eqn.bdata(cP) = eqn.bdata(cP) + bcval * fArea(dom.nIf + j);
             end
        end        
-                 
-        
-
        % Asignar los datos calculados a eqn
        
        eqn.adata = [adiag; anb_internal; anb_boundary];
@@ -176,6 +164,8 @@ function result = examplesolver(casedef)
        x = get(T);
        x = x';
        spy(A);
+
+       
        
        % Check tolerance and iteration count
        TRes = b - A * x;
@@ -226,31 +216,11 @@ function result = examplesolver(casedef)
     result.TRes = Field(dom.allCells, 0);
     set(result.TRes, TRes');
     result.T = T;
-    disp(result.T.data(105));
-    disp(result.T.data(115));
-    disp(result.T.data(125));
-    disp(result.T.data(135));
-
-    
-
-
-
-
+    disp(result.T.data(916));
+    disp(result.T.data(946));
+    disp(result.T.data(976));
+    disp(result.T.data(1006));
 end
-
-
-
-    
-    
-
-
-
-
-
-
-
-
-
 
     
 
