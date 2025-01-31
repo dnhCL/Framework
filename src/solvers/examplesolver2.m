@@ -154,3 +154,17 @@ function result = examplesolver2(casedef)
   result.U = U;
 
 end
+
+function fieldFace=faceInterpolate(dom,field)
+    tempFace=zeros(field.dim,dom.nF);
+    for i=1:dom.nF
+      c1=dom.fNbC(2*i-1); %physical cell index
+      c2=dom.fNbC(2*i); %neighbor cell
+      fXiLambda=dom.fXiLambda(i);
+      tempFace(:,i)=( (1-fXiLambda)*field.data(:,c1) + fXiLambda*field.data(:,c2) );
+    end
+    
+    fieldFace = Field(dom.allFaces,1);     % Velocity [m/s] (vector);
+    set(fieldFace,tempFace);
+    
+end

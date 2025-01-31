@@ -122,7 +122,7 @@ velocity_profile_x = velocity_profile_x(valid_range_y);
 velocity_profile_x = velocity_profile_x(sort_idx);
 
 % Compute analytical solution
-u_analytical = analyticalCanalFlow(y_values, -norm(gradP), Ly, ...
+u_analytical = channel(y_values, -norm(gradP), Ly, ...
                                    casedef.material.nu * casedef.material.rho, u_out);
 
 % Compute relative error
@@ -167,3 +167,8 @@ ylabel('U_x');
 title(['Velocity Profile at y = ', num2str(Ly/2), ' (0 ≤ x ≤ ', num2str(Lx), ')']);
 grid on;
 
+function u = channel(ymesh,dp,H,mu,Utop)
+
+  u = dp*H^2/(2*mu)*( ymesh.^2/H^2 - ymesh/H ) + Utop * ymesh/H;
+  
+end
