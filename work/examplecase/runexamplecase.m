@@ -15,8 +15,8 @@ clc             % Clear the command window
 
 %% 2. Mesh Generation
 % Create structured mesh using line seeds in x and y directions
-seedI = LineSeed.lineSeedOneWayBias([0 0], [1 0], 10, 1.00, 'o');
-seedJ = LineSeed.lineSeedOneWayBias([0 0], [0 1], 10, 1.00, 'o');
+seedI = LineSeed.lineSeedOneWayBias([0 0], [1 0], 400, 1.00, 'o');
+seedJ = LineSeed.lineSeedOneWayBias([0 0], [0 1], 400, 1.00, 'o');
 
 % Define boundary names
 casedef.boundarynames = {'WESTRAND', 'OOSTRAND', 'ZUIDRAND', 'NOORDRAND'};
@@ -36,7 +36,7 @@ casedef.T = T;
 
 % Velocity field (vector)
 U = Field(casedef.dom.allCells, 1);
-velocity_magnitude = 1;
+velocity_magnitude = 0;
 x_component = velocity_magnitude;
 y_component = 0;
 set(U, [x_component * ones(1, U.elcountzone); y_component * ones(1, U.elcountzone)]);

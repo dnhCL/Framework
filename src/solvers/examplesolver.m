@@ -147,7 +147,7 @@ function result = examplesolver(casedef)
         [A, b] = to_msparse(eqn);
         x = get(T);
         x = x';
-n
+
 
         % Compute residuals and check convergence
         TRes = b - A * x;

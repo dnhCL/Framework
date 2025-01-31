@@ -166,5 +166,11 @@ function fieldFace=faceInterpolate(dom,field)
     
     fieldFace = Field(dom.allFaces,1);     % Velocity [m/s] (vector);
     set(fieldFace,tempFace);
+end 
+
     
+function Unorm=scalarProduct(Uface,fNormal);
+
+    Unorm=sum(Uface.data .* fNormal,1);
+        
 end

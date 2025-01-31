@@ -1,8 +1,12 @@
 %==========================================================================
-% Simulation of Flow in a Channel with Fixed Pressure Gradient
-% Method: Finite Volume Method (FVM)
-% The numerical solution is compared with the analytical solution of 
-% channel flow.
+% Example Case Using the FVMLab Framework
+%
+% Purpose:
+% - Demonstrates how to set up a CFD case using the FVMLab framework.
+% - Includes mesh generation, material property definition, boundary 
+%   conditions, iteration parameters, and calling the solver.
+%
+% by Frederik Rogiers
 %==========================================================================
 
 %% 1. Initialization
@@ -49,7 +53,7 @@ reset(P, 0);
 
 % Define material properties
 casedef.material.mu = 0.1;     % Kinematic viscosity
-casedef.material.rho = 10;      % Density
+casedef.material.rho = 1;      % Density
 casedef.material.k = 1;        % Thermal conductivity [W/(m·K)]
 
 % Store variables in the case definition
