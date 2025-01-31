@@ -21,7 +21,7 @@ uniformU = [0, 0];  % Initial velocity field (zero in both directions)
 f = [1, 0] ;
 
 % Define boundary velocity and pressure gradient
-u_out = 5;     % Velocity at boundary
+u_out = 0;     % Velocity at boundary
 dp = -10;         % Pressure difference
 gradP = dp * f;  % Compute pressure gradient
 
