@@ -48,7 +48,7 @@ P = Field(casedef.dom.allCells, 0);
 reset(P, 0);
 
 % Define material properties
-casedef.material.nu = 0.1;     % Kinematic viscosity
+casedef.material.mu = 0.1;     % Kinematic viscosity
 casedef.material.rho = 10;      % Density
 casedef.material.k = 1;        % Thermal conductivity [W/(m·K)]
 
@@ -70,7 +70,7 @@ casedef.iteration.TTol     = 1e-9;  % Convergence tolerance
 casedef.iteration.dt       = 50;    % Time step
 
 %% 7. Solve the Problem using examplesolver2
-result = examplesolver2(casedef);
+result = pressuresolver(casedef);
 
 %% 8. Post-processing: Extract and Plot Velocity Field
 % Define velocity field for post-processing

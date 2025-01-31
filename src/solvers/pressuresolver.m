@@ -1,5 +1,5 @@
 %Pressure 
-function result = examplesolver2(casedef)
+function result =  pressuresolve(casedef)
 
   %% 1. Extract Domain and Initialize Fields
   dom = casedef.dom;
@@ -8,7 +8,7 @@ function result = examplesolver2(casedef)
   U = casedef.vars.Uinit;
   
   % Extract material properties
-  nu = casedef.material.nu;  % Kinematic viscosity
+  nu = casedef.material.mu;  % Kinematic viscosity
   rho = casedef.material.rho; % Density
   dt = casedef.iteration.dt;  % Time step size
   gradP = casedef.vars.gradP; % Pressure gradient
