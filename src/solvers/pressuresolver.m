@@ -5,13 +5,13 @@ function result =  pressuresolve(casedef)
   dom = casedef.dom;
   
   % Initialize velocity field
-  U = casedef.vars.Uinit;
+  U = casedef.U;
   
   % Extract material properties
   nu = casedef.material.mu;  % Kinematic viscosity
   rho = casedef.material.rho; % Density
   dt = casedef.iteration.dt;  % Time step size
-  gradP = casedef.vars.gradP; % Pressure gradient
+  gradP = casedef.gradP; % Pressure gradient
 
   % Create equation objects for velocity components (u and v)
   eqn_u = ScalarFvEqn2(dom);

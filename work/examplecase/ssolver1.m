@@ -11,7 +11,7 @@ function result = ssolver1(Nx, Ny)
     seedJ = LineSeed.lineSeedOneWayBias([0 0], [0 1], Ny, 1.00, 'o');
     casedef.boundarynames = {'WESTRAND', 'OOSTRAND', 'ZUIDRAND', 'NOORDRAND'};
     mesh = TwoSeedMesher.genmesh(seedI, seedJ, casedef.boundarynames);
-    casedef.dom = newdomain(mesh, 'MyDomain');
+    casedef.dom = newdomain(mesh, 'MyDomain'); 
 
     %% 3. Define Initial Fields
     T = Field(casedef.dom.allCells, 0);
@@ -65,7 +65,10 @@ function result = ssolver1(Nx, Ny)
     %% 7. Solve the Case Using the Solver
     result = examplesolver(casedef);
 
-    % Return results for grid convergence analysis
+    % 
+    result.dom = casedef.dom;  
+
+    % 
     result.Nx = Nx;
     result.Ny = Ny;
     result.L2Error = norm(result.T.data - casedef.T.data) / norm(casedef.T.data);

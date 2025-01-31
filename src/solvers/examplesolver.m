@@ -26,6 +26,7 @@ function result = examplesolver(casedef)
     fXiLambda = dom.fXiLambda;
     U = casedef.U;         % Velocity field
     rho = casedef.material.rho; % Density
+    
 
     % Initialize lists for storing face velocities
     U_face_internal = [];
@@ -152,6 +153,8 @@ function result = examplesolver(casedef)
         % Compute residuals and check convergence
         TRes = b - A * x;
         TResnorm = norm(TRes);
+
+        
         
         if TResnorm < casedef.iteration.TTol
             Tconverged = true;
@@ -176,6 +179,7 @@ function result = examplesolver(casedef)
     result.P = P;
     result.U = U;
 
+    
 end
 
 

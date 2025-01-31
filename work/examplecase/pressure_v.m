@@ -21,8 +21,8 @@ uniformU = [0, 0];  % Initial velocity field (zero in both directions)
 f = [1, 0] ;
 
 % Define boundary velocity and pressure gradient
-u_out = 10;     % Velocity at boundary
-dp = -1000;         % Pressure difference
+u_out = 5;     % Velocity at boundary
+dp = -10;         % Pressure difference
 gradP = dp * f;  % Compute pressure gradient
 
 % Define boundary conditions
@@ -52,14 +52,14 @@ P = Field(casedef.dom.allCells, 0);
 reset(P, 0);
 
 % Define material properties
-casedef.material.mu = 0.1;     % Kinematic viscosity
+casedef.material.mu = 1;     % Kinematic viscosity
 casedef.material.rho = 1;      % Density
 casedef.material.k = 1;        % Thermal conductivity [W/(m·K)]
 
 % Store variables in the case definition
-casedef.vars.Uinit = U;
-casedef.vars.P = P;  
-casedef.vars.gradP = gradP;
+casedef.U = U;
+casedef.P = P;  
+casedef.gradP = gradP;
 
 %% 5. Apply Boundary Conditions
 for i = 1:length(casedef.boundarynames)
@@ -126,12 +126,12 @@ velocity_profile_x = velocity_profile_x(valid_range_y);
 velocity_profile_x = velocity_profile_x(sort_idx);
 
 % Compute analytical solution
-u_analytical = channel(y_values, -norm(gradP), Ly, ...
-                                   casedef.material.nu * casedef.material.rho, u_out);
+u_analytical = f_case(y_values, -norm(gradP), Ly, ...
+                                   casedef.material.mu * casedef.material.rho, u_out);
 
 % Compute relative error
 rel_error = norm(velocity_profile_x - u_analytical) / norm(u_analytical);
-fprintf("Relative error of numerical solution: %10.4e\n", rel_error);
+fprintf("er: %10.4e\n", rel_error);
 
 % Plot the velocity profile at x = Lx/2
 figure;
@@ -139,7 +139,7 @@ plot(y_values, velocity_profile_x, '-o', 'LineWidth', 2, 'MarkerSize', 6);
 hold on;
 plot(y_values, u_analytical, '*', 'MarkerSize', 6);
 xlabel('y');
-ylabel('U_x');
+ylabel('U');
 title(['Velocity Profile at x = ', num2str(Lx/2), ' (0 ≤ y ≤ ', num2str(Ly), ')']);
 legend("Numerical Solution", "Analytical Solution", 'Location', 'northwest');
 grid on;
@@ -171,7 +171,7 @@ ylabel('U_x');
 title(['Velocity Profile at y = ', num2str(Ly/2), ' (0 ≤ x ≤ ', num2str(Lx), ')']);
 grid on;
 
-function u = channel(ymesh,dp,H,mu,Utop)
+function u = f_case(ymesh,dp,H,mu,Utop)
 
   u = dp*H^2/(2*mu)*( ymesh.^2/H^2 - ymesh/H ) + Utop * ymesh/H;
   
