@@ -1,235 +1,167 @@
 %==========================================================================
+% Example Case Using the FVMLab Framework
 %
-% Example case using the FVMLab framework 4 students
-%
-% Purpose: Provides an example for setting up a case and calling a solver.
-%          This involves creating a mesh, defining materials, defining
-%          boundary conditions, defining iteration parameters, and finally
-%          calling the solver.
+% Purpose:
+% - Demonstrates how to set up a CFD case using the FVMLab framework.
+% - Includes mesh generation, material property definition, boundary 
+%   conditions, iteration parameters, and calling the solver.
 %
 % by Frederik Rogiers
-%
 %==========================================================================
 
-% TIP: use "clear variables" instead of "clear all" to clear variables
-%      use "clear classes" when the interface of a class has changes
-%      use "close all" to close figures
-%      use "clc" to clear the command window
-% 
-% TIP: pressing CTRL+D while the cursor is on a function opens that function
-%      in the m-editor. This is the most convenient way of browsing through
-%      your source code.
+%% 1. Initialization
+clear variables  % Clear all variables in memory
+clc             % Clear the command window
 
-clear variables
-clc
+%% 2. Mesh Generation
+% Create structured mesh using line seeds in x and y directions
+seedI = LineSeed.lineSeedOneWayBias([0 0], [1 0], 10, 1.00, 'o');
+seedJ = LineSeed.lineSeedOneWayBias([0 0], [0 1], 10, 1.00, 'o');
 
+% Define boundary names
+casedef.boundarynames = {'WESTRAND', 'OOSTRAND', 'ZUIDRAND', 'NOORDRAND'};
 
-% Create a mesh
-seedI = LineSeed.lineSeedOneWayBias([0 0],[1 0],30,1.00,'o');
-seedJ = LineSeed.lineSeedOneWayBias([0 0],[0 1],30,1.00,'o');
-casedef.boundarynames = {'WESTRAND','OOSTRAND','ZUIDRAND','NOORDRAND'};
-mesh  = TwoSeedMesher.genmesh(seedI,seedJ,casedef.boundarynames);
-% Create domain from mesh
-casedef.dom = newdomain(mesh,'MyDomain');
+% Generate the mesh
+mesh = TwoSeedMesher.genmesh(seedI, seedJ, casedef.boundarynames);
 
+% Create computational domain
+casedef.dom = newdomain(mesh, 'MyDomain');
 
+%% 3. Define Initial Fields
+% Temperature field (scalar)
+T = Field(casedef.dom.allCells, 0);
+randomdata = rand(T.elsize, T.elcountzone) - 0.5; % Random initial temperature distribution
+set(T, randomdata);
+casedef.T = T;
 
-% Set up initial fields
-T = Field(casedef.dom.allCells,0);     % Temperature [K] (scalar); empty field
-% reset(T,0);
-
-
-randomdata = rand(T.elsize,T.elcountzone)-0.5;
-set(T,randomdata);                     % Set with random numbers
-
-
-
-
-%{
- U = Field(casedef.dom.allCells,1);     % Velocity [m/s] (vector);
-set(U,[rand(1,U.elcountzone);rand(1,U.elcountzone)]);
-
-casedef.U = U; 
-%}
-
-
-
-%reset(U,[1;0.2]);
-
-
-
-
-
-  % Crear el campo de velocidades U
-U = Field(casedef.dom.allCells, 1); % Velocidad [m/s] (vector)
-
-% Configurar un campo de velocidades horizontal con magnitud 10
-vel_magnitud =5; % Magnitud constante
-x_component = vel_magnitud; % Toda la magnitud en la dirección x
-y_component = 2; % Ninguna componente en la dirección y
-
-% Asignar el mismo vector de velocidad a todas las celdas
+% Velocity field (vector)
+U = Field(casedef.dom.allCells, 1);
+velocity_magnitude = 1;
+x_component = velocity_magnitude;
+y_component = 0;
 set(U, [x_component * ones(1, U.elcountzone); y_component * ones(1, U.elcountzone)]);
+casedef.U = U;
 
-% Asignar el campo U a la definición del caso
-casedef.U = U;  
+%% 4. Define Material Properties
+casedef.material.k = 1;   % Thermal conductivity
+casedef.material.rho = 1; % Density
+casedef.material.mu = 1;  % Dynamic viscosity
 
-%disp(U.data);
- 
-
-
-
-
-
-
-
-% Define material properties
-casedef.material.k = 1;  % Thermal conductivity [W/(m K)]
-casedef.material.rho = 1;
-
-% Define boundary conditions
-
-
-
-
+%% 5. Define Boundary Conditions for Temperature
 jBC = 0;
-jBC = jBC+1;
+
+% Dirichlet boundary condition at WESTRAND (T = 10)
+jBC = jBC + 1;
 casedef.BC{jBC}.zoneID = 'WESTRAND';
 casedef.BC{jBC}.kind   = 'Dirichlet';
 casedef.BC{jBC}.data.bcval = 10;
-jBC = jBC+1;
+
+% Dirichlet boundary condition at OOSTRAND (T = 0)
+jBC = jBC + 1;
 casedef.BC{jBC}.zoneID = 'OOSTRAND';
 casedef.BC{jBC}.kind   = 'Dirichlet';
 casedef.BC{jBC}.data.bcval = 0;
-jBC = jBC+1;
+
+% Dirichlet boundary condition at ZUIDRAND (T = 0)
+jBC = jBC + 1;
 casedef.BC{jBC}.zoneID = 'ZUIDRAND';
 casedef.BC{jBC}.kind   = 'Dirichlet';
 casedef.BC{jBC}.data.bcval = 0;
-jBC = jBC+1;
+
+% Dirichlet boundary condition at NOORDRAND (T = 0)
+jBC = jBC + 1;
 casedef.BC{jBC}.zoneID = 'NOORDRAND';
 casedef.BC{jBC}.kind   = 'Dirichlet';
-casedef.BC{jBC}.data.bcval = 0; 
-
-
-
-
-%{
-jBC = 0;
-jBC = jBC+1;
-casedef.BC{jBC}.zoneID = 'WESTRAND';
-casedef.BC{jBC}.kind   = 'Dirichlet';
 casedef.BC{jBC}.data.bcval = 0;
-jBC = jBC+1;
-casedef.BC{jBC}.zoneID = 'OOSTRAND';
-casedef.BC{jBC}.kind   = 'Dirichlet';
-casedef.BC{jBC}.data.bcval = 0;
-jBC = jBC+1;
-casedef.BC{jBC}.zoneID = 'ZUIDRAND';
-casedef.BC{jBC}.kind   = 'Dirichlet';
-casedef.BC{jBC}.data.bcval = 10;
-jBC = jBC+1;
-casedef.BC{jBC}.zoneID = 'NOORDRAND';
-casedef.BC{jBC}.kind   = 'Dirichlet';
-casedef.BC{jBC}.data.bcval = 10;
- %}
- 
 
+%% 6. Iteration Parameters
+casedef.iteration.maxniter = 1000; % Maximum number of iterations
+casedef.iteration.TTol = 1e-6;     % Convergence tolerance
 
-
-
-% Set up iteration parameters
-casedef.iteration.maxniter = 1000;
-casedef.iteration.TTol     = 1e-6;
-
-normal = Field(casedef.dom.allFaces,1);
-tangent = Field(casedef.dom.allFaces,1);
-xi = Field(casedef.dom.allFaces,1);
+%% 8. Define Normal, Tangent, and Xi Fields for Face Calculations
+normal = Field(casedef.dom.allFaces, 1);
+tangent = Field(casedef.dom.allFaces, 1);
+xi = Field(casedef.dom.allFaces, 1);
 set(normal, (casedef.dom.fNormal));
-set(tangent,(casedef.dom.fTangent));
-set(xi,(casedef.dom.fXi));
+set(tangent, (casedef.dom.fTangent));
+set(xi, (casedef.dom.fXi));
 
-% Call solver for velocity and pressure
-%result_pressure = examplesolver_P(casedef);
-% Update velocity in the case definition
-%casedef.U = result_pressure.U;
-% Call solver
+%% 9. Solve the Case Using the Solver
 result = examplesolver(casedef);
 
-% Combine results
-
-
-%result.U = result_pressure.U;
-%result.P = result_pressure.P; 
-
-
-
-
-
-% Plot result
+%% 10. Post-Processing: Plot Temperature Field
 figure; hold on; axis off; axis equal; colormap(jet(50));
 scale = 'lin'; lw = 1;
-fvmplotfield(result.T,scale,0);
-%fvmplotfield(result.P,scale,0);
-%Uoost = restrictto(U,getzone(casedef.dom,'OOSTRAND'));
-%fvmplotvectorfield(xi,lw);
-%fvmplotmesh(casedef.dom,lw);
-%fvmplotcellnumbers(casedef.dom,8);
-% fvmplotfacenumbers(casedef.dom,8);
-% fvmplotvertexnumbers(casedef.dom,8);
+fvmplotfield(result.T, scale, 0); % Plot temperature field
 
-% Obtener coordenadas de los centros de las celdas y los valores de temperatura
-cell_centers = casedef.dom.cCoord; % Coordenadas de los centros de las celdas
-temperatures = result.T.data;      % Temperatura en cada celda
+%% 11. Extract and Plot Temperature Profiles
 
-% Seleccionar celdas cerca de x = 0.5 (con un pequeño margen de error)
-tolerance = 0.05; % Ajusta este valor si necesitas mayor precisión
-x_target = 0.45;
-cells_in_line = abs(cell_centers(1, :) - x_target) < tolerance;
+% Get total mesh size
+Lx = double(seedI.displX); % Length in x-direction
+Ly = double(seedJ.displY); % Length in y-direction
 
-% Extraer coordenadas y temperaturas de las celdas seleccionadas
-y_values = cell_centers(2, cells_in_line);   % Coordenada y de las celdas seleccionadas
-temperature_profile = temperatures(cells_in_line); % Temperaturas correspondientes
+% Number of cells in each direction
+Nx = double(seedI.nSegm);
+Ny = double(seedJ.nSegm);
 
-% Filtrar valores de y entre 0 y 1
-valid_range = (y_values >= -0) & (y_values <= 1);
-y_values = y_values(valid_range);
-temperature_profile = temperature_profile(valid_range);
+% Compute cell size
+dx = Lx / Nx;
+dy = Ly / Ny;
 
-% Ordenar por y
+% Compute target locations for profile extraction
+x_target = double((Lx / 2) - (dx / 2)); % Midpoint in x-direction
+y_target = double((Ly / 2) - (dy / 2)); % Midpoint in y-direction
+tolerance = double(dx / 2); % Define margin for selection
+
+% Get cell centers and temperature values
+cell_centers = double(casedef.dom.cCoord);
+temperatures = double(result.T.data);
+
+% Select cells near x_target (vertical temperature profile)
+cells_in_line_x = abs(cell_centers(1, :) - x_target) < tolerance;
+y_values = cell_centers(2, cells_in_line_x);
+temperature_profile_x = temperatures(cells_in_line_x);
+
+% Filter values within a valid range
+valid_range_y = (y_values >= 0) & (y_values <= Ly);
+y_values = y_values(valid_range_y);
+temperature_profile_x = temperature_profile_x(valid_range_y);
+
+% Sort data by y-coordinates
 [y_values, sort_idx] = sort(y_values);
-temperature_profile = temperature_profile(sort_idx);
+temperature_profile_x = temperature_profile_x(sort_idx);
 
-% Graficar el perfil de temperaturas en x = 0.5
+% Plot temperature profile at x = Lx/2
 figure;
-plot(y_values, temperature_profile, '-o');
+plot(y_values, temperature_profile_x, '-o');
 xlabel('y');
-ylabel('Temperatura');
-title('Perfil de Temperatura a lo largo de x = 0.5 (0 ≤ y ≤ 1)');
+ylabel('Temperature');
+title(['Temperature Profile at x = ', num2str(Lx/2), ' (0 ≤ y ≤ ', num2str(Ly), ')']);
 grid on;
 
+% ----------------------------
 
-% Seleccionar celdas cerca de y = 0.5 (con un pequeño margen de error)
+% Select cells near y_target (horizontal temperature profile)
+cells_in_line_y = abs(cell_centers(2, :) - y_target) < tolerance;
+x_values = cell_centers(1, cells_in_line_y);
+temperature_profile_y = temperatures(cells_in_line_y);
 
-y_target = 0.45;
-cells_in_line = abs(cell_centers(2, :) - y_target) < tolerance;
+% Filter values within a valid range
+valid_range_x = (x_values >= 0) & (x_values <= Lx);
+x_values = x_values(valid_range_x);
+temperature_profile_y = temperature_profile_y(valid_range_x);
 
-% Extraer coordenadas y temperaturas de las celdas seleccionadas
-x_values = cell_centers(1, cells_in_line);   % Coordenada x de las celdas seleccionadas
-temperature_profile = temperatures(cells_in_line); % Temperaturas correspondientes
-
-% Filtrar valores de x entre 0 y 1
-valid_range = (x_values >= 0) & (x_values <= 1);
-x_values = x_values(valid_range);
-temperature_profile = temperature_profile(valid_range);
-
-% Ordenar por x
+% Sort data by x-coordinates
 [x_values, sort_idx] = sort(x_values);
-temperature_profile = temperature_profile(sort_idx);
+temperature_profile_y = temperature_profile_y(sort_idx);
 
-% Graficar el perfil de temperaturas en y = 0.5
+% Plot temperature profile at y = Ly/2
 figure;
-plot(x_values, temperature_profile, '-o');
+plot(x_values, temperature_profile_y, '-o');
 xlabel('x');
-ylabel('Temperatura');
-title('Perfil de Temperatura a lo largo de y = 0.5 (0 ≤ x ≤ 1)');
+ylabel('Temperature');
+title(['Temperature Profile at y = ', num2str(Ly/2), ' (0 ≤ x ≤ ', num2str(Lx), ')']);
 grid on;
+
+
+
